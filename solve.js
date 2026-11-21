@@ -19,6 +19,7 @@ export function run(input) {
   const crPos = [];
   for (let i = text.indexOf('\r'); i !== -1; i = text.indexOf('\r', i + 1)) crPos.push(i);
   let crIdx = 0;
+  let nextCr = crPos.length > 0 ? crPos[0] : -1;
 
   let recordLine = 1;
   let recordRow = null;
@@ -78,8 +79,8 @@ export function run(input) {
 
   // Quoted segment [s,e): CRLF/lone CR -> LF, lines counted.
   function quotedSegStr(s, e) {
-    while (crIdx < crPos.length && crPos[crIdx] < s) crIdx++;
-    const hasCr = crIdx < crPos.length && crPos[crIdx] < e;
+    while (nextCr !== -1 && nextCr < s) { crIdx++; nextCr = crIdx < crPos.length ? crPos[crIdx] : -1; }
+    const hasCr = nextCr !== -1 && nextCr < e;
     if (!hasCr) {
       const n = text.indexOf('\n', s);
       if (n === -1 || n >= e) return text.slice(s, e);
@@ -109,6 +110,7 @@ export function run(input) {
     const open = pos;
     const openLine = line;
     const openCrIdx = crIdx;
+    const openNextCr = nextCr;
     let i = pos + 1;
     let segStart = i;
     let value = null;
@@ -139,6 +141,7 @@ export function run(input) {
       pos = open + 1;
       line = openLine;
       crIdx = openCrIdx;
+      nextCr = openNextCr;
       errors.push({ code: 'unterminated_quote', line: recordLine, row: recordRow });
       scanUnquotedSlow('"');
       return;
@@ -185,8 +188,7 @@ export function run(input) {
         if (iComma !== -1 && iComma < lineEnd) { end = iComma; ended = 0; }
         else if (nlAt !== -1) { end = lineEnd; ended = 1; }
         else { end = len; ended = 2; }
-        while (crIdx < crPos.length && crPos[crIdx] < pos) crIdx++;
-        const nextCr = crIdx < crPos.length ? crPos[crIdx] : -1;
+        while (nextCr !== -1 && nextCr < pos) { crIdx++; nextCr = crIdx < crPos.length ? crPos[crIdx] : -1; }
         if (nextCr !== -1 && nextCr < end) {
           if (ended === 1 && nextCr === end - 1) {
             fields.push(text.slice(pos, end - 1));
